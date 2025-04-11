@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 // Types for market data
@@ -51,8 +52,54 @@ const BASE_URL = "https://www.alphavantage.co/query";
 // CoinGecko API for cryptocurrency data
 const COINGECKO_API_URL = "https://api.coingecko.com/api/v3";
 
+// Cache durations in milliseconds
+const CACHE_DURATION = {
+  CRYPTO: 60 * 1000, // 1 minute for crypto data
+  STOCK: 5 * 60 * 1000, // 5 minutes for stock data
+  INDICES: 5 * 60 * 1000, // 5 minutes for indices
+  HISTORICAL: 30 * 60 * 1000, // 30 minutes for historical data
+};
+
+// Simple in-memory cache
+const dataCache: Record<string, { data: any; timestamp: number }> = {};
+
+// Cache helper functions
+const getCachedData = (key: string) => {
+  const cachedItem = dataCache[key];
+  if (cachedItem) {
+    const now = Date.now();
+    // Check if key format indicates what type of data it is
+    let cacheDuration = CACHE_DURATION.STOCK;
+    if (key.startsWith('crypto_')) {
+      cacheDuration = CACHE_DURATION.CRYPTO;
+    } else if (key.startsWith('indices')) {
+      cacheDuration = CACHE_DURATION.INDICES;
+    } else if (key.startsWith('history_')) {
+      cacheDuration = CACHE_DURATION.HISTORICAL;
+    }
+    
+    // Return cached data if it's still valid
+    if (now - cachedItem.timestamp < cacheDuration) {
+      console.log(`Using cached data for ${key}`);
+      return cachedItem.data;
+    }
+  }
+  return null;
+};
+
+const cacheData = (key: string, data: any) => {
+  dataCache[key] = { data, timestamp: Date.now() };
+};
+
 // Get real-time quote for a stock
 export const getStockQuote = async (symbol: string): Promise<StockQuote | null> => {
+  const cacheKey = `stock_${symbol}`;
+  const cachedData = getCachedData(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
+  }
+  
   try {
     const response = await fetch(
       `${BASE_URL}?function=GLOBAL_QUOTE&symbol=NSE:${symbol}&apikey=${API_KEY}`
@@ -68,7 +115,7 @@ export const getStockQuote = async (symbol: string): Promise<StockQuote | null> 
     if (data["Global Quote"] && Object.keys(data["Global Quote"]).length > 0) {
       const quote = data["Global Quote"];
       
-      return {
+      const stockData = {
         symbol: symbol,
         companyName: symbol, // Alpha Vantage doesn't provide company name in GLOBAL_QUOTE
         currentPrice: parseFloat(quote["05. price"]),
@@ -80,6 +127,9 @@ export const getStockQuote = async (symbol: string): Promise<StockQuote | null> 
         open: parseFloat(quote["02. open"]),
         previousClose: parseFloat(quote["08. previous close"]),
       };
+      
+      cacheData(cacheKey, stockData);
+      return stockData;
     }
     
     // Handle API limit exceeded or symbol not found
@@ -99,6 +149,13 @@ export const getStockQuote = async (symbol: string): Promise<StockQuote | null> 
 
 // Get major Indian market indices
 export const getMarketIndices = async (): Promise<MarketIndex[]> => {
+  const cacheKey = 'indices';
+  const cachedData = getCachedData(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
+  }
+  
   try {
     // In a real implementation, you would fetch this from an API
     // Since Alpha Vantage free tier is limited, we'll simulate real-time data
@@ -112,7 +169,7 @@ export const getMarketIndices = async (): Promise<MarketIndex[]> => {
     ];
     
     // Add small random changes to simulate real-time data
-    return mockIndices.map(index => {
+    const indices = mockIndices.map(index => {
       const randomChange = (Math.random() - 0.5) * 20; // Random change between -10 and +10
       const newPrice = index.price + randomChange;
       const newChange = index.change + randomChange;
@@ -125,6 +182,9 @@ export const getMarketIndices = async (): Promise<MarketIndex[]> => {
         percentChange: parseFloat(newPercentChange.toFixed(2)),
       };
     });
+    
+    cacheData(cacheKey, indices);
+    return indices;
   } catch (error) {
     console.error("Error fetching market indices:", error);
     toast.error("Failed to fetch market data. Please try again.");
@@ -134,6 +194,13 @@ export const getMarketIndices = async (): Promise<MarketIndex[]> => {
 
 // Get historical data for a stock or index
 export const getHistoricalData = async (symbol: string, interval: 'daily' | 'intraday' = 'daily'): Promise<StockHistoricalData[]> => {
+  const cacheKey = `history_${symbol}_${interval}`;
+  const cachedData = getCachedData(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
+  }
+  
   try {
     let function_name = interval === 'intraday' ? 'TIME_SERIES_INTRADAY' : 'TIME_SERIES_DAILY';
     let interval_param = interval === 'intraday' ? '&interval=5min' : '';
@@ -169,7 +236,7 @@ export const getHistoricalData = async (symbol: string, interval: 'daily' | 'int
       return [];
     }
     
-    return Object.keys(timeSeries).map(date => {
+    const historicalData = Object.keys(timeSeries).map(date => {
       const entry = timeSeries[date];
       return {
         date: date.split(' ')[0], // Extract date part
@@ -181,6 +248,9 @@ export const getHistoricalData = async (symbol: string, interval: 'daily' | 'int
         volume: parseInt(entry["5. volume"]),
       };
     }).slice(0, 30); // Get the most recent 30 data points
+    
+    cacheData(cacheKey, historicalData);
+    return historicalData;
   } catch (error) {
     console.error("Error fetching historical data:", error);
     toast.error("Failed to fetch historical data. Please try again.");
@@ -211,29 +281,60 @@ export const isMarketOpen = (): boolean => {
 
 // Get cryptocurrency data from CoinGecko API
 export const getCryptoData = async (): Promise<CryptoData[]> => {
+  const cacheKey = 'crypto_list';
+  const cachedData = getCachedData(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
+  }
+  
   try {
-    // Fetch real data from CoinGecko API
-    const response = await fetch(
-      `${COINGECKO_API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h`
-    );
+    // Fetch real data from CoinGecko API with retry logic
+    const fetchWithRetry = async (retries = 3, delay = 1000): Promise<CryptoData[]> => {
+      try {
+        const response = await fetch(
+          `${COINGECKO_API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+        
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded");
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch cryptocurrency data: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Transform CoinGecko data to our CryptoData format
+        const cryptoData = data.map((crypto: any) => ({
+          symbol: crypto.symbol.toUpperCase(),
+          name: crypto.name,
+          price: crypto.current_price,
+          change: crypto.price_change_24h,
+          percentChange: crypto.price_change_percentage_24h,
+          marketCap: crypto.market_cap,
+          volume24h: crypto.total_volume,
+          image: crypto.image
+        }));
+        
+        cacheData(cacheKey, cryptoData);
+        return cryptoData;
+      } catch (error: any) {
+        console.error(`Attempt failed: ${error.message}`);
+        
+        if (error.message.includes("Rate limit") && retries > 0) {
+          console.log(`Retrying... ${retries} attempts left`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return fetchWithRetry(retries - 1, delay * 2);
+        }
+        
+        throw error;
+      }
+    };
     
-    if (!response.ok) {
-      throw new Error("Failed to fetch cryptocurrency data");
-    }
-    
-    const data = await response.json();
-    
-    // Transform CoinGecko data to our CryptoData format
-    return data.map((crypto: any) => ({
-      symbol: crypto.symbol.toUpperCase(),
-      name: crypto.name,
-      price: crypto.current_price,
-      change: crypto.price_change_24h,
-      percentChange: crypto.price_change_percentage_24h,
-      marketCap: crypto.market_cap,
-      volume24h: crypto.total_volume,
-      image: crypto.image
-    }));
+    return await fetchWithRetry();
   } catch (error) {
     console.error("Error fetching crypto data:", error);
     toast.error("Failed to fetch cryptocurrency data. Using fallback data.");
@@ -251,54 +352,106 @@ export const getCryptoData = async (): Promise<CryptoData[]> => {
   }
 };
 
-// Get historical data for a cryptocurrency
+// Get historical data for a cryptocurrency with improved error handling
 export const getCryptoHistoricalData = async (coinId: string, days: number = 30): Promise<StockHistoricalData[]> => {
+  const cacheKey = `crypto_history_${coinId}_${days}`;
+  const cachedData = getCachedData(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
+  }
+  
   try {
     // For symbols like BTC, we need to map to coingecko's coin IDs
     const coinIdMap: {[key: string]: string} = {
       'BTC': 'bitcoin',
+      'BTC-USD': 'bitcoin',
       'ETH': 'ethereum',
+      'ETH-USD': 'ethereum',
       'BNB': 'binancecoin',
+      'BNB-USD': 'binancecoin',
       'SOL': 'solana',
+      'SOL-USD': 'solana',
       'XRP': 'ripple',
+      'XRP-USD': 'ripple',
       'DOGE': 'dogecoin',
+      'DOGE-USD': 'dogecoin',
       'ADA': 'cardano',
+      'ADA-USD': 'cardano',
       'DOT': 'polkadot',
+      'DOT-USD': 'polkadot',
       'LTC': 'litecoin',
-      'MATIC': 'matic-network'
+      'LTC-USD': 'litecoin',
+      'MATIC': 'matic-network',
+      'MATIC-USD': 'matic-network'
     };
     
     // Use the mapped ID or fallback to lowercase version of the symbol
-    const geckoId = coinIdMap[coinId] || coinId.toLowerCase();
+    const geckoId = coinIdMap[coinId] || (coinId.includes('-') ? coinId.split('-')[0].toLowerCase() : coinId.toLowerCase());
     
-    const response = await fetch(
-      `${COINGECKO_API_URL}/coins/${geckoId}/market_chart?vs_currency=usd&days=${days}`
-    );
+    // Use a retry mechanism for rate-limited APIs
+    const fetchWithRetry = async (retries = 3, delay = 1000): Promise<StockHistoricalData[]> => {
+      try {
+        const response = await fetch(
+          `${COINGECKO_API_URL}/coins/${geckoId}/market_chart?vs_currency=usd&days=${days}`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+        
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded");
+        }
+        
+        if (response.status === 404) {
+          console.error(`Coin not found: ${geckoId}`);
+          throw new Error(`Coin not found: ${geckoId}`);
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch historical data: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Transform CoinGecko data to our StockHistoricalData format
+        // CoinGecko returns data as [timestamp, price] pairs
+        if (data.prices && Array.isArray(data.prices)) {
+          const historicalData = data.prices.map((item: [number, number]) => {
+            const date = new Date(item[0]);
+            return {
+              date: date.toISOString().split('T')[0],
+              time: date.toISOString().split('T')[1].substring(0, 5),
+              open: item[1], // CoinGecko doesn't provide OHLC so we use the price for all
+              high: item[1],
+              low: item[1],
+              close: item[1],
+              volume: 0 // We don't have volume data per timestamp
+            };
+          });
+          
+          cacheData(cacheKey, historicalData);
+          return historicalData;
+        }
+        
+        return [];
+      } catch (error: any) {
+        console.error(`Attempt failed: ${error.message}`);
+        
+        if (error.message.includes("Rate limit") && retries > 0) {
+          console.log(`Retrying... ${retries} attempts left`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return fetchWithRetry(retries - 1, delay * 2);
+        }
+        
+        if (error.message.includes("Coin not found")) {
+          // If coin not found, return empty data
+          return [];
+        }
+        
+        throw error;
+      }
+    };
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch historical data for ${coinId}`);
-    }
-    
-    const data = await response.json();
-    
-    // Transform CoinGecko data to our StockHistoricalData format
-    // CoinGecko returns data as [timestamp, price] pairs
-    if (data.prices && Array.isArray(data.prices)) {
-      return data.prices.map((item: [number, number]) => {
-        const date = new Date(item[0]);
-        return {
-          date: date.toISOString().split('T')[0],
-          time: date.toISOString().split('T')[1].substring(0, 5),
-          open: item[1], // CoinGecko doesn't provide OHLC so we use the price for all
-          high: item[1],
-          low: item[1],
-          close: item[1],
-          volume: 0 // We don't have volume data per timestamp
-        };
-      });
-    }
-    
-    return [];
+    return await fetchWithRetry();
   } catch (error) {
     console.error(`Error fetching historical data for ${coinId}:`, error);
     toast.error("Failed to fetch cryptocurrency historical data.");
