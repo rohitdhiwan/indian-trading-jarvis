@@ -1,102 +1,121 @@
-
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React from "react";
 import {
   BarChart3,
-  LineChart,
-  Home,
-  Briefcase,
-  MessageSquare,
-  Settings,
-  Info,
-  TrendingUp,
-  ScrollText,
   LayoutDashboard,
+  ListChecks,
+  Sparkles,
+  Settings,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { useNavigate, useLocation } from "react-router-dom";
 
-const Sidebar = () => {
+interface SidebarProps {
+  isMobile?: boolean;
+}
+
+const items = [
+  {
+    href: "/dashboard",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+    name: "Dashboard",
+  },
+  {
+    href: "/watchlist",
+    icon: <ListChecks className="h-4 w-4" />,
+    name: "Watchlist",
+  },
+  {
+    href: "/paper-trading",
+    icon: <BarChart3 className="h-4 w-4" />,
+    name: "Paper Trading",
+  },
+];
+
+const Sidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  const navigationItems = [
-    { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/" },
-    { name: "Watchlist", icon: <BarChart3 size={20} />, path: "/watchlist" },
-    { name: "Strategies", icon: <TrendingUp size={20} />, path: "/strategies" },
-    { name: "Paper Trading", icon: <Briefcase size={20} />, path: "/paper-trading" },
-    { name: "AI Assistant", icon: <MessageSquare size={20} />, path: "/assistant" },
-    { name: "Market News", icon: <ScrollText size={20} />, path: "/news" },
-  ];
-
-  const bottomNavItems = [
-    { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
-    { name: "About", icon: <Info size={20} />, path: "/about" },
-  ];
-
-  const NavItem = ({
-    name,
-    icon,
-    path,
-  }: {
-    name: string;
-    icon: React.ReactNode;
-    path: string;
-  }) => {
-    const isActive = location.pathname === path;
-
-    return (
-      <Link
-        to={path}
-        className={cn(
-          "flex items-center gap-3 rounded-md px-3 py-2 transition-colors",
-          isActive
-            ? "bg-accent text-accent-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-        )}
-      >
-        {icon}
-        {!isCollapsed && <span>{name}</span>}
-      </Link>
-    );
-  };
 
   return (
-    <aside
+    <div
       className={cn(
-        "flex h-screen flex-col border-r border-border bg-card transition-all duration-300",
-        isCollapsed ? "w-16" : "w-56"
+        "flex h-screen flex-col border-r bg-background",
+        isMobile ? "w-full" : "w-72"
       )}
     >
-      <div className="flex h-16 items-center justify-between px-3 py-4">
-        <div className="flex items-center gap-2 font-bold text-primary">
-          {!isCollapsed && <span>TRADE JARVIS</span>}
-          {isCollapsed && <LineChart size={24} />}
+      <div className="flex h-14 items-center border-b px-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6" />
+          <span className="text-lg font-semibold">TradeSmart</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="h-8 w-8"
-        >
-          {isCollapsed ? (
-            <TrendingUp className="h-4 w-4 rotate-0" />
-          ) : (
-            <TrendingUp className="h-4 w-4 -rotate-90" />
-          )}
-        </Button>
       </div>
-      <nav className="flex-1 space-y-1 px-3 py-2">
-        {navigationItems.map((item) => (
-          <NavItem key={item.name} {...item} />
-        ))}
+      <nav className="flex-1 overflow-auto py-2">
+        <ul className="grid gap-1 px-2">
+          {items.map((item, index) => (
+            <li key={index}>
+              <button
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                  location.pathname === item.href
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
+                )}
+                onClick={() => navigate(item.href)}
+              >
+                {item.icon}
+                {item.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+        
+        <div className="px-3 py-2">
+          <h3 className="px-2 text-xs font-medium text-muted-foreground">Settings</h3>
+          <ul className="grid gap-1 p-1">
+            <li>
+              <button
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                  location.pathname === "/settings"
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
+                )}
+                onClick={() => navigate("/settings")}
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </button>
+            </li>
+          </ul>
+        </div>
       </nav>
-      <div className="border-t border-border px-3 py-2">
-        {bottomNavItems.map((item) => (
-          <NavItem key={item.name} {...item} />
-        ))}
+      
+      <div className="mt-auto p-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="rounded-full bg-primary p-2">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <div>
+                <h4 className="text-sm font-medium">AI Assistant</h4>
+                <p className="text-xs text-muted-foreground">
+                  Get help with your trading
+                </p>
+              </div>
+            </div>
+            <Button
+              className="mt-4 w-full"
+              size="sm"
+              onClick={() => navigate("/assistant")}
+            >
+              Ask AI
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    </aside>
+    </div>
   );
 };
 
