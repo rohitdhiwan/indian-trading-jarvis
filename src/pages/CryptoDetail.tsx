@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Info, BarChart3, LineChart, Calendar, RefreshCw, Bitcoin } from "lucide-react";
-import StockChart from "@/components/stock/StockChart";
+import CryptoChart from "@/components/crypto/CryptoChart";
 import { getCryptoData, CryptoData } from "@/services/marketDataService";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ const CryptoDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
   const [cryptoData, setCryptoData] = useState<CryptoData | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [chartDays, setChartDays] = useState<number>(30);
   
   // Get crypto data with React Query for automatic refreshing
   const { data, isLoading, refetch } = useQuery({
@@ -21,20 +22,21 @@ const CryptoDetail = () => {
     queryFn: async () => {
       const allCryptos = await getCryptoData();
       // Filter to find the specific crypto
-      return allCryptos.find(crypto => 
+      const crypto = allCryptos.find(crypto => 
         crypto.symbol === symbol || 
         `${crypto.symbol}-USD` === symbol
-      ) || null;
-    },
-    refetchInterval: 60000, // Refresh every minute
-    staleTime: 30000,
-    onSuccess: (data) => {
-      if (data) {
-        setCryptoData(data);
+      );
+      
+      if (crypto) {
+        setCryptoData(crypto);
       } else {
         toast.error(`No data found for ${symbol}`);
       }
-    }
+      
+      return crypto || null;
+    },
+    refetchInterval: 60000, // Refresh every minute
+    staleTime: 30000,
   });
 
   // Manual refresh handler
@@ -51,7 +53,11 @@ const CryptoDetail = () => {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Bitcoin className="h-6 w-6 text-primary" />
+          {cryptoData?.image ? (
+            <img src={cryptoData.image} alt={cryptoData.name} className="h-8 w-8 rounded-full" />
+          ) : (
+            <Bitcoin className="h-6 w-6 text-primary" />
+          )}
           <div>
             <h1 className="text-2xl font-bold">{cryptoData?.name || 'Loading...'}</h1>
             <p className="text-muted-foreground">Crypto: {displaySymbol}</p>
@@ -169,21 +175,44 @@ const CryptoDetail = () => {
             <CardContent className="p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">1D</Button>
-                  <Button variant="outline" size="sm">1W</Button>
-                  <Button variant="outline" size="sm">1M</Button>
-                  <Button variant="outline" size="sm">3M</Button>
-                  <Button variant="outline" size="sm">1Y</Button>
-                  <Button variant="outline" size="sm">5Y</Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>Custom</span>
+                  <Button 
+                    variant={chartDays === 1 ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setChartDays(1)}
+                  >
+                    1D
+                  </Button>
+                  <Button 
+                    variant={chartDays === 7 ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setChartDays(7)}
+                  >
+                    1W
+                  </Button>
+                  <Button 
+                    variant={chartDays === 30 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setChartDays(30)}
+                  >
+                    1M
+                  </Button>
+                  <Button 
+                    variant={chartDays === 90 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setChartDays(90)}
+                  >
+                    3M
+                  </Button>
+                  <Button 
+                    variant={chartDays === 365 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setChartDays(365)}
+                  >
+                    1Y
                   </Button>
                 </div>
               </div>
-              <StockChart />
+              <CryptoChart symbol={displaySymbol} days={chartDays} />
             </CardContent>
           </Card>
         </TabsContent>

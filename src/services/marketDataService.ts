@@ -17,6 +17,7 @@ export interface CryptoData {
   percentChange: number;
   marketCap?: number;
   volume24h?: number;
+  image?: string;
 }
 
 export interface StockQuote {
@@ -46,6 +47,9 @@ export interface StockHistoricalData {
 // Alpha Vantage free API for market data (limited to 25 requests per day)
 const API_KEY = "demo"; // Replace with your Alpha Vantage API key
 const BASE_URL = "https://www.alphavantage.co/query";
+
+// CoinGecko API for cryptocurrency data
+const COINGECKO_API_URL = "https://api.coingecko.com/api/v3";
 
 // Get real-time quote for a stock
 export const getStockQuote = async (symbol: string): Promise<StockQuote | null> => {
@@ -205,12 +209,36 @@ export const isMarketOpen = (): boolean => {
   return day >= 1 && day <= 5 && timeInMinutes >= marketOpen && timeInMinutes <= marketClose;
 };
 
-// Get cryptocurrency data (Top 5 by market cap)
+// Get cryptocurrency data from CoinGecko API
 export const getCryptoData = async (): Promise<CryptoData[]> => {
   try {
-    // For a real implementation, you would fetch from an API like CoinGecko or CryptoCompare
-    // Since Alpha Vantage free tier is limited, we'll simulate real-time data for now
+    // Fetch real data from CoinGecko API
+    const response = await fetch(
+      `${COINGECKO_API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h`
+    );
     
+    if (!response.ok) {
+      throw new Error("Failed to fetch cryptocurrency data");
+    }
+    
+    const data = await response.json();
+    
+    // Transform CoinGecko data to our CryptoData format
+    return data.map((crypto: any) => ({
+      symbol: crypto.symbol.toUpperCase(),
+      name: crypto.name,
+      price: crypto.current_price,
+      change: crypto.price_change_24h,
+      percentChange: crypto.price_change_percentage_24h,
+      marketCap: crypto.market_cap,
+      volume24h: crypto.total_volume,
+      image: crypto.image
+    }));
+  } catch (error) {
+    console.error("Error fetching crypto data:", error);
+    toast.error("Failed to fetch cryptocurrency data. Using fallback data.");
+    
+    // Fallback to mock data if API fails
     const mockCryptoData = [
       { symbol: "BTC", name: "Bitcoin", price: 63254.32, change: 1254.21, percentChange: 2.03, marketCap: 1243000000000, volume24h: 32546000000 },
       { symbol: "ETH", name: "Ethereum", price: 3126.45, change: -42.65, percentChange: -1.34, marketCap: 375200000000, volume24h: 14325000000 },
@@ -219,23 +247,61 @@ export const getCryptoData = async (): Promise<CryptoData[]> => {
       { symbol: "XRP", name: "XRP", price: 0.532, change: -0.021, percentChange: -3.79, marketCap: 29300000000, volume24h: 1254000000 },
     ];
     
-    // Add small random changes to simulate real-time data
-    return mockCryptoData.map(crypto => {
-      const randomChange = (Math.random() - 0.5) * (crypto.price * 0.02); // Random change between -1% and +1%
-      const newPrice = crypto.price + randomChange;
-      const newChange = crypto.change + randomChange;
-      const newPercentChange = (newChange / (newPrice - newChange)) * 100;
-      
-      return {
-        ...crypto,
-        price: parseFloat(newPrice.toFixed(2)),
-        change: parseFloat(newChange.toFixed(2)),
-        percentChange: parseFloat(newPercentChange.toFixed(2)),
-      };
-    });
+    return mockCryptoData;
+  }
+};
+
+// Get historical data for a cryptocurrency
+export const getCryptoHistoricalData = async (coinId: string, days: number = 30): Promise<StockHistoricalData[]> => {
+  try {
+    // For symbols like BTC, we need to map to coingecko's coin IDs
+    const coinIdMap: {[key: string]: string} = {
+      'BTC': 'bitcoin',
+      'ETH': 'ethereum',
+      'BNB': 'binancecoin',
+      'SOL': 'solana',
+      'XRP': 'ripple',
+      'DOGE': 'dogecoin',
+      'ADA': 'cardano',
+      'DOT': 'polkadot',
+      'LTC': 'litecoin',
+      'MATIC': 'matic-network'
+    };
+    
+    // Use the mapped ID or fallback to lowercase version of the symbol
+    const geckoId = coinIdMap[coinId] || coinId.toLowerCase();
+    
+    const response = await fetch(
+      `${COINGECKO_API_URL}/coins/${geckoId}/market_chart?vs_currency=usd&days=${days}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch historical data for ${coinId}`);
+    }
+    
+    const data = await response.json();
+    
+    // Transform CoinGecko data to our StockHistoricalData format
+    // CoinGecko returns data as [timestamp, price] pairs
+    if (data.prices && Array.isArray(data.prices)) {
+      return data.prices.map((item: [number, number]) => {
+        const date = new Date(item[0]);
+        return {
+          date: date.toISOString().split('T')[0],
+          time: date.toISOString().split('T')[1].substring(0, 5),
+          open: item[1], // CoinGecko doesn't provide OHLC so we use the price for all
+          high: item[1],
+          low: item[1],
+          close: item[1],
+          volume: 0 // We don't have volume data per timestamp
+        };
+      });
+    }
+    
+    return [];
   } catch (error) {
-    console.error("Error fetching crypto data:", error);
-    toast.error("Failed to fetch cryptocurrency data. Please try again.");
+    console.error(`Error fetching historical data for ${coinId}:`, error);
+    toast.error("Failed to fetch cryptocurrency historical data.");
     return [];
   }
 };
