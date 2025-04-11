@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,21 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				profit: {
+					DEFAULT: '#22c55e', // Green for profits
+					light: '#86efac' 
+				},
+				loss: {
+					DEFAULT: '#ef4444', // Red for losses
+					light: '#fca5a5'
+				},
+				neutral: {
+					DEFAULT: '#9ca3af', // Neutral gray
+					light: '#d1d5db'
+				},
+				"chart-grid": "rgba(255, 255, 255, 0.1)",
+				"chart-tooltip": "rgba(0, 0, 0, 0.75)",
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,11 +99,16 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				pulse: {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.5' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
 			}
 		}
 	},
