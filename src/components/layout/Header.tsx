@@ -1,27 +1,57 @@
 
 import { useState } from "react";
-import { Search, Bell, User, Menu } from "lucide-react";
+import { Search, Bell, RefreshCw, User, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
+import { getStockQuote } from "@/services/marketDataService";
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/stock/${searchQuery.trim().toUpperCase()}`);
-    } else {
+    if (!searchQuery.trim()) {
       toast({
         title: "Search Error",
         description: "Please enter a valid stock symbol",
         variant: "destructive",
       });
+      return;
+    }
+
+    setIsSearching(true);
+    const symbol = searchQuery.trim().toUpperCase();
+    
+    try {
+      // Validate if the stock exists before navigating
+      const stockData = await getStockQuote(symbol);
+      
+      if (stockData) {
+        // Stock exists, navigate to its detail page
+        navigate(`/stock/${symbol}`);
+      } else {
+        // Stock not found
+        toast({
+          title: "Stock Not Found",
+          description: `No data found for ${symbol}. Please check the symbol and try again.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        title: "Search Error",
+        description: "Failed to search for the stock. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -39,7 +69,11 @@ const Header = () => {
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isSearching}
             />
+            {isSearching && (
+              <RefreshCw className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </form>
         </div>
         <div className="flex items-center gap-3">
