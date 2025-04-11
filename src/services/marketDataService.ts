@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 // Types for market data
@@ -8,6 +7,16 @@ export interface MarketIndex {
   price: number;
   change: number;
   percentChange: number;
+}
+
+export interface CryptoData {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  percentChange: number;
+  marketCap?: number;
+  volume24h?: number;
 }
 
 export interface StockQuote {
@@ -194,4 +203,45 @@ export const isMarketOpen = (): boolean => {
   
   // Check if it's a weekday and within market hours
   return day >= 1 && day <= 5 && timeInMinutes >= marketOpen && timeInMinutes <= marketClose;
+};
+
+// Get cryptocurrency data (Top 5 by market cap)
+export const getCryptoData = async (): Promise<CryptoData[]> => {
+  try {
+    // For a real implementation, you would fetch from an API like CoinGecko or CryptoCompare
+    // Since Alpha Vantage free tier is limited, we'll simulate real-time data for now
+    
+    const mockCryptoData = [
+      { symbol: "BTC", name: "Bitcoin", price: 63254.32, change: 1254.21, percentChange: 2.03, marketCap: 1243000000000, volume24h: 32546000000 },
+      { symbol: "ETH", name: "Ethereum", price: 3126.45, change: -42.65, percentChange: -1.34, marketCap: 375200000000, volume24h: 14325000000 },
+      { symbol: "BNB", name: "Binance Coin", price: 563.21, change: 12.43, percentChange: 2.26, marketCap: 85600000000, volume24h: 3421000000 },
+      { symbol: "SOL", name: "Solana", price: 143.56, change: 5.21, percentChange: 3.76, marketCap: 62400000000, volume24h: 2765000000 },
+      { symbol: "XRP", name: "XRP", price: 0.532, change: -0.021, percentChange: -3.79, marketCap: 29300000000, volume24h: 1254000000 },
+    ];
+    
+    // Add small random changes to simulate real-time data
+    return mockCryptoData.map(crypto => {
+      const randomChange = (Math.random() - 0.5) * (crypto.price * 0.02); // Random change between -1% and +1%
+      const newPrice = crypto.price + randomChange;
+      const newChange = crypto.change + randomChange;
+      const newPercentChange = (newChange / (newPrice - newChange)) * 100;
+      
+      return {
+        ...crypto,
+        price: parseFloat(newPrice.toFixed(2)),
+        change: parseFloat(newChange.toFixed(2)),
+        percentChange: parseFloat(newPercentChange.toFixed(2)),
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching crypto data:", error);
+    toast.error("Failed to fetch cryptocurrency data. Please try again.");
+    return [];
+  }
+};
+
+// Check if crypto market is open (24/7)
+export const isCryptoMarketOpen = (): boolean => {
+  // Crypto markets are always open
+  return true;
 };

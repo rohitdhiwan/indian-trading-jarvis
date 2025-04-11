@@ -2,7 +2,8 @@
 import React from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { isMarketOpen } from "@/services/marketDataService";
+import { isMarketOpen, isCryptoMarketOpen } from "@/services/marketDataService";
+import { Bitcoin } from "lucide-react";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,19 +17,39 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <Header />
         <div className="bg-muted/50 border-b border-border">
           <div className="container flex items-center justify-between py-1 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">NSE Market:</span>
-              {isMarketOpen() ? (
-                <span className="flex items-center gap-1">
-                  <span className="font-semibold text-profit">Open</span>
-                  <div className="h-2 w-2 rounded-full bg-profit animate-pulse"></div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">NSE Market:</span>
+                {isMarketOpen() ? (
+                  <span className="flex items-center gap-1">
+                    <span className="font-semibold text-profit">Open</span>
+                    <div className="h-2 w-2 rounded-full bg-profit animate-pulse"></div>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <span className="font-semibold text-muted-foreground">Closed</span>
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground"></div>
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Bitcoin size={14} />
+                  Crypto:
                 </span>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <span className="font-semibold text-muted-foreground">Closed</span>
-                  <div className="h-2 w-2 rounded-full bg-muted-foreground"></div>
-                </span>
-              )}
+                {isCryptoMarketOpen() ? (
+                  <span className="flex items-center gap-1">
+                    <span className="font-semibold text-profit">Open</span>
+                    <div className="h-2 w-2 rounded-full bg-profit animate-pulse"></div>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <span className="font-semibold text-muted-foreground">Closed</span>
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground"></div>
+                  </span>
+                )}
+              </div>
             </div>
             <div className="text-muted-foreground">
               <span>{new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
