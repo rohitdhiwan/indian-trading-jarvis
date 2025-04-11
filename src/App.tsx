@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import StockDetail from "./pages/StockDetail";
+import CryptoDetail from "./pages/CryptoDetail";
 import Assistant from "./pages/Assistant";
 import PaperTrading from "./pages/PaperTrading";
 import NotFound from "./pages/NotFound";
@@ -22,6 +23,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/stock/:symbol" element={<AppLayout><StockDetail /></AppLayout>} />
+          <Route path="/crypto/:symbol" element={<AppLayout><CryptoDetail /></AppLayout>} />
           <Route path="/assistant" element={<AppLayout><Assistant /></AppLayout>} />
           <Route path="/paper-trading" element={<AppLayout><PaperTrading /></AppLayout>} />
           {/* These routes will be implemented later */}

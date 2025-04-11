@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { isMarketOpen, isCryptoMarketOpen } from "@/services/marketDataService";
@@ -10,6 +10,17 @@ interface AppLayoutProps {
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Real-time clock update
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -52,9 +63,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </div>
             </div>
             <div className="text-muted-foreground">
-              <span>{new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+              <span>{currentTime.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
               <span> • </span>
-              <span>{new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>{currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
             </div>
           </div>
         </div>

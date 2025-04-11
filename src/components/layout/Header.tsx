@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { getStockQuote } from "@/services/marketDataService";
+import { getStockQuote, getCryptoData } from "@/services/marketDataService";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Header = () => {
@@ -47,9 +47,19 @@ const Header = () => {
           });
         }
       } else {
-        // For now, just navigate to crypto page
-        // In a full implementation, you would validate the crypto symbol first
-        navigate(`/crypto/${symbol}`);
+        // For crypto, check if the symbol exists in our data
+        const cryptoData = await getCryptoData();
+        const crypto = cryptoData.find(c => 
+          c.symbol === symbol || 
+          c.symbol.toLowerCase() === symbol.toLowerCase()
+        );
+        
+        if (crypto) {
+          navigate(`/crypto/${symbol}-USD`);
+        } else {
+          // Crypto not found, but let's try anyway since our mock data is limited
+          navigate(`/crypto/${symbol}-USD`);
+        }
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -60,6 +70,7 @@ const Header = () => {
       });
     } finally {
       setIsSearching(false);
+      setSearchQuery(""); // Clear the search input after searching
     }
   };
 
