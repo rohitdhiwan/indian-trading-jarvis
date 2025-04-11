@@ -1,15 +1,12 @@
 
 import React, { useState, useEffect } from "react";
+import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { isMarketOpen, isCryptoMarketOpen } from "@/services/marketDataService";
 import { Bitcoin } from "lucide-react";
 
-interface AppLayoutProps {
-  children: React.ReactNode;
-}
-
-const AppLayout = ({ children }: AppLayoutProps) => {
+const AppLayout = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   
   // Real-time clock update
@@ -69,7 +66,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             </div>
           </div>
         </div>
-        <main className="flex-1 overflow-auto p-4">{children}</main>
+        <main className="flex-1 overflow-auto p-4">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
